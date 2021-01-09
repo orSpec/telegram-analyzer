@@ -37,7 +37,7 @@ def filterDataFrame(df, startDate = None, endDate = None):
 
 def postingTimeChart(df):
     plt.figure(figsize=(10, 5))
-    g = sns.countplot(x="datetime_hour", data=df, color="green")
+    g = sns.countplot(x="datetime_hour", data=df, color="green", order=range(24))
     g.set_xlabel("Hour")
     g.set_title("Messages per hour")
     plt.savefig("postingTimeChart.png")
@@ -81,6 +81,20 @@ def mostActiveUsersPieChart(df, n=None):
     plt.savefig("mostActiveUsers.png")
 
 
+def getStatistics(df):
+    minDate = df["datetime_date"].min()
+    maxDate = df["datetime_date"].max()
+    daysInData = (maxDate - minDate).days + 1
+    messages = len(df)
+    meanNrOfMessages = round(df.groupby("datetime_date")["id"].count().mean(), 2)
+    members = df["UserID"].nunique()
+
+    dic = {"Members": members, "Messages": messages, "First date": minDate,
+           "Last date": maxDate, "Days in data": daysInData, "Mean # messages per day": meanNrOfMessages}
+
+    return dic
+
+
 def isPositiveValue(input):
     try:
         value = int(input)
@@ -95,18 +109,21 @@ def isPositiveValue(input):
 def main():
 
     parser = argparse.ArgumentParser(description="Analyse a Telegram JSON file. Simply read the file in and create insights.")
-    parser.add_argument('file', help='JSON file containing the telegram data')
-    parser.add_argument('--start', type=datetime.fromisoformat, help="First date to consider, Format YYYY-MM-DD",
+    parser.add_argument("file", help="JSON file containing the telegram data")
+    parser.add_argument("--start", type=datetime.fromisoformat, help="First date to consider, Format YYYY-MM-DD",
                         metavar="DATE")
-    parser.add_argument('--end', type=datetime.fromisoformat, help="Last date to consider, Format YYYY-MM-DD",
+    parser.add_argument("--end", type=datetime.fromisoformat, help="Last date to consider, Format YYYY-MM-DD",
                         metavar="DATE")
-    parser.add_argument('-a', '--activity', default=[None], action="store", nargs="*", type=int, metavar = "UserID",
+    parser.add_argument("-a", "--activity", default=[None], action="store", nargs="*", type=int, metavar = "UserID",
                         help="Create chart of activity over time of all users, pass one or multiple UserIDs to evaluate only these users")
-    parser.add_argument('-t', '--time', action='store_true', help="Create chart of posting times")
-    parser.add_argument('-ma', '--mostActive', type=isPositiveValue, help="Show n most active users: Need to pass n > 0",
+    parser.add_argument("-t", "--time", action="store_true", help="Create chart of posting times")
+    parser.add_argument("-ma", "--mostActive", type=isPositiveValue, help="Show n most active users: Need to pass n > 0",
                         metavar="nrOfUsers")
-    parser.add_argument('-mac', '--mostActiveChart', type=isPositiveValue,
+    parser.add_argument("-mac", "--mostActiveChart", type=isPositiveValue,
                         help="Create chart of n most active users:  Need to pass n > 0", metavar="nrOfUsers")
+
+    parser.add_argument("-s", "--statistics", action="store_true",
+                        help = "show statistics (#members, #messages, #mean nr of messages etc.")
 
     args = parser.parse_args()
 
@@ -130,6 +147,10 @@ def main():
     if args.mostActiveChart:
         nrUsers = args.mostActiveChart
         mostActiveUsersPieChart(df, nrUsers)
+
+    if args.statistics:
+        stats = getStatistics(df)
+        print(tabulate(stats.items(), tablefmt='psql', showindex=False))
 
 
 if __name__ == "__main__":
