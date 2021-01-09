@@ -11,10 +11,12 @@ def createDataFrame(file):
         d = json.load(f)
 
     df = pd.DataFrame(d["messages"])
-    df = df[["id", "type", "date", "text", "from", "from_id", "media_type", "edited"]]
+    df = df[["id", "type", "date", "text", "from", "from_id", "media_type", "edited"]]\
+        .rename(columns={"from": "Username", "from_id": "UserID"})
+
     df = df[df["type"] == "message"]
 
-    df["from_id"] = df["from_id"].astype(int)
+    df["UserID"] = df["UserID"].astype(int)
 
     df["datetime"] = pd.to_datetime(df["date"])
     df["datetime_date"] = df["datetime"].dt.date
@@ -42,21 +44,29 @@ def postingTimeChart(df):
 
     return g
 
-def activityOverTime(df):
+
+def activityOverTime(df,users):
     plt.figure(figsize=(15, 5))
 
-    plot_data = df.groupby("datetime_date").count()["id"].reset_index().rename(columns={"datetime_date" : "Date", "id" : "Messages"})
-    g = sns.lineplot(x="Date", y="Messages", data=plot_data)
+    if users:
+        plot_data = df[df["UserID"].isin(users)].groupby(["UserID", "datetime_date"]).count()["id"]\
+            .reset_index().rename(columns={"datetime_date": "Date", "id": "Messages"})
+        g = sns.lineplot(x="Date", y="Messages", hue="UserID", data=plot_data, legend="full", palette="viridis")
+    else:
+        plot_data = df.groupby("datetime_date").count()["id"].reset_index()\
+            .rename(columns={"datetime_date": "Date", "id": "Messages"})
+        g = sns.lineplot(x="Date", y="Messages", data=plot_data)
+
     g.set_title("Activity (nr of messages) over time")
     plt.savefig("activityOverTime.png")
 
 def getNMostActiveUser(df,n=None):
-    mostActive = df.groupby("from_id").count()["id"].sort_values(ascending=False).reset_index().rename(columns={"id" : "Messages"})
+    mostActive = df.groupby("UserID").count()["id"].sort_values(ascending=False).reset_index().rename(columns={"id": "Messages"})
 
     if n:
         mostActive = mostActive.head(n)
 
-    mostActive = mostActive.merge(df[["from_id", "from"]], how="left").drop_duplicates().rename(columns={"from": "Username", "from_id" : "UserID"})
+    mostActive = mostActive.merge(df[["UserID", "Username"]], how="left").drop_duplicates()
     mostActive = mostActive[["Username", "UserID", "Messages"]]
 
     return mostActive
@@ -86,12 +96,17 @@ def main():
 
     parser = argparse.ArgumentParser(description="Analyse a Telegram JSON file. Simply read the file in and create insights.")
     parser.add_argument('file', help='JSON file containing the telegram data')
-    parser.add_argument('--start', type=datetime.fromisoformat, help="First date to consider")
-    parser.add_argument('--end', type=datetime.fromisoformat, help="Last date to consider")
-    parser.add_argument('-a', '--activity', action='store_true', help="Create chart of activity over time")
+    parser.add_argument('--start', type=datetime.fromisoformat, help="First date to consider, Format YYYY-MM-DD",
+                        metavar="DATE")
+    parser.add_argument('--end', type=datetime.fromisoformat, help="Last date to consider, Format YYYY-MM-DD",
+                        metavar="DATE")
+    parser.add_argument('-a', '--activity', default=[None], action="store", nargs="*", type=int, metavar = "UserID",
+                        help="Create chart of activity over time of all users, pass one or multiple UserIDs to evaluate only these users")
     parser.add_argument('-t', '--time', action='store_true', help="Create chart of posting times")
-    parser.add_argument('-ma', '--mostActive', type=isPositiveValue, help='Show n most active users: Need to pass n > 0')
-    parser.add_argument('-mac', '--mostActiveChart', type=isPositiveValue, help='Create chart of n most active users:  Need to pass n > 0')
+    parser.add_argument('-ma', '--mostActive', type=isPositiveValue, help="Show n most active users: Need to pass n > 0",
+                        metavar="nrOfUsers")
+    parser.add_argument('-mac', '--mostActiveChart', type=isPositiveValue,
+                        help="Create chart of n most active users:  Need to pass n > 0", metavar="nrOfUsers")
 
     args = parser.parse_args()
 
@@ -103,8 +118,9 @@ def main():
     if args.time:
         postingTimeChart(df)
 
-    if args.activity:
-        activityOverTime(df)
+    if args.activity != [None]:
+        users = args.activity
+        activityOverTime(df, users)
 
     if args.mostActive:
             nrUsers = args.mostActive
