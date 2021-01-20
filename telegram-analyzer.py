@@ -23,6 +23,7 @@ def createDataFrame(file):
     df["datetime_year"] = df["datetime"].dt.year
     df["datetime_month"] = df["datetime"].dt.month
     df["datetime_hour"] = df["datetime"].dt.hour
+    df["datetime_weekday"] = df["datetime"].dt.day_name()
 
     return df
 
@@ -41,6 +42,16 @@ def postingTimeChart(df):
     g.set_xlabel("Hour")
     g.set_title("Messages per hour")
     plt.savefig("postingTimeChart.png")
+
+    return g
+
+def messagesPerWeekday(df):
+    plt.figure(figsize=(10, 5))
+    order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    g = sns.countplot(x="datetime_weekday", data=df, color="green", order=order)
+    g.set_xlabel("Weekday")
+    g.set_title("Messages")
+    plt.savefig("messagesPerWeekday.png")
 
     return g
 
@@ -116,7 +127,6 @@ def main():
                         metavar="DATE")
     parser.add_argument("-a", "--activity", default=[None], action="store", nargs="*", type=int, metavar = "UserID",
                         help="Create chart of activity over time of all users, pass one or multiple UserIDs to evaluate only these users")
-    parser.add_argument("-t", "--time", action="store_true", help="Create chart of posting times")
     parser.add_argument("-ma", "--mostActive", type=isPositiveValue, help="Show n most active users: Need to pass n > 0",
                         metavar="nrOfUsers")
     parser.add_argument("-mac", "--mostActiveChart", type=isPositiveValue,
@@ -124,6 +134,10 @@ def main():
 
     parser.add_argument("-s", "--statistics", action="store_true",
                         help = "show statistics (#members, #messages, #mean nr of messages etc.")
+
+    parser.add_argument("-t", "--time", action="store_true", help="Create chart of posting times")
+
+    parser.add_argument("-w", "--weekday", action="store_true", help="Create chart of messages per weekday")
 
     args = parser.parse_args()
 
@@ -134,6 +148,9 @@ def main():
 
     if args.time:
         postingTimeChart(df)
+
+    if args.weekday:
+        messagesPerWeekday(df)
 
     if args.activity != [None]:
         users = args.activity
