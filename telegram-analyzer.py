@@ -55,6 +55,27 @@ def messagesPerWeekday(df):
 
     return g
 
+def heatmapDayHours(df):
+    data = df.groupby(["datetime_weekday", "datetime_hour"])["id"].count().reset_index()
+    heat = data.pivot(index="datetime_weekday", columns="datetime_hour", values="id").reset_index().set_index("datetime_weekday")
+
+    ## fill up missing hours
+    hours = list(range(24))
+    for x in hours:
+        if x not in heat.columns:
+            heat[x] = np.NaN
+
+    # rearrange columns and transpose, then rearrange again
+    heat = heat[range(24)]
+    heat = heat.transpose()
+    heat = heat[["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]]
+
+    plt.figure(figsize=(14, 12))
+    g = sns.heatmap(heat,annot=True,fmt=".0f")
+    plt.savefig("heatmap_Days_Hours.png")
+
+    return g
+
 
 def activityOverTime(df,users):
     plt.figure(figsize=(15, 5))
@@ -127,6 +148,8 @@ def main():
                         metavar="DATE")
     parser.add_argument("-a", "--activity", default=[None], action="store", nargs="*", type=int, metavar = "UserID",
                         help="Create chart of activity over time of all users, pass one or multiple UserIDs to evaluate only these users")
+
+    parser.add_argument("-dh", "--daysHours", action="store_true", help="Create heatmap of posting days vs. times")
     parser.add_argument("-ma", "--mostActive", type=isPositiveValue, help="Show n most active users: Need to pass n > 0",
                         metavar="nrOfUsers")
     parser.add_argument("-mac", "--mostActiveChart", type=isPositiveValue,
@@ -139,6 +162,8 @@ def main():
 
     parser.add_argument("-w", "--weekday", action="store_true", help="Create chart of messages per weekday")
 
+
+
     args = parser.parse_args()
 
     df = createDataFrame(args.file)
@@ -148,6 +173,9 @@ def main():
 
     if args.time:
         postingTimeChart(df)
+
+    if args.daysHours:
+        heatmapDayHours(df)
 
     if args.weekday:
         messagesPerWeekday(df)
