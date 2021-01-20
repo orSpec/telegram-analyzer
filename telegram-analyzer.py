@@ -6,9 +6,14 @@ import argparse
 from datetime import datetime
 from tabulate import tabulate
 
-def createDataFrame(file):
+def createChannel(file):
     with open(file, encoding="utf8") as f:
         d = json.load(f)
+
+    channel = {}
+    channel["name"] = d["name"]
+    channel["id"] = d["id"]
+    channel["type"] = d["type"]
 
     df = pd.DataFrame(d["messages"])
     df = df[["id", "type", "date", "text", "from", "from_id", "media_type", "edited"]]\
@@ -23,9 +28,10 @@ def createDataFrame(file):
     df["datetime_year"] = df["datetime"].dt.year
     df["datetime_month"] = df["datetime"].dt.month
     df["datetime_hour"] = df["datetime"].dt.hour
-    df["datetime_weekday"] = df["datetime"].dt.day_name()
 
-    return df
+    channel["messages"] = df
+
+    return channel
 
 def filterDataFrame(df, startDate = None, endDate = None):
     if startDate:
@@ -113,7 +119,9 @@ def mostActiveUsersPieChart(df, n=None):
     plt.savefig("mostActiveUsers.png")
 
 
-def getStatistics(df):
+def getStatistics(channel):
+
+    df = channel["messages"]
     minDate = df["datetime_date"].min()
     maxDate = df["datetime_date"].max()
     daysInData = (maxDate - minDate).days + 1
@@ -121,7 +129,8 @@ def getStatistics(df):
     meanNrOfMessages = round(df.groupby("datetime_date")["id"].count().mean(), 2)
     members = df["UserID"].nunique()
 
-    dic = {"Members": members, "Messages": messages, "First date": minDate,
+    dic = {"Channel": channel["name"], "Channel ID" : channel["id"], "Channel Type" : channel["type"],
+           "Members": members, "Messages": messages, "First date": minDate,
            "Last date": maxDate, "Days in data": daysInData, "Mean # messages per day": meanNrOfMessages}
 
     return dic
@@ -166,7 +175,9 @@ def main():
 
     args = parser.parse_args()
 
-    df = createDataFrame(args.file)
+    channel = createChannel(args.file)
+
+    df = channel["messages"]
 
     if args.start or args.end:
         df = filterDataFrame(df, startDate=args.start, endDate=args.end)
@@ -194,12 +205,9 @@ def main():
         mostActiveUsersPieChart(df, nrUsers)
 
     if args.statistics:
-        stats = getStatistics(df)
+        stats = getStatistics(channel)
         print(tabulate(stats.items(), tablefmt='psql', showindex=False))
 
 
 if __name__ == "__main__":
         main()
-
-
-
