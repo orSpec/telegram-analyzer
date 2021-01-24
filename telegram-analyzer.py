@@ -5,6 +5,7 @@ import seaborn as sns
 import argparse
 from datetime import datetime
 from tabulate import tabulate
+import numpy as np
 
 def createChannel(file):
     with open(file, encoding="utf8") as f:
@@ -27,6 +28,7 @@ def createChannel(file):
     df["datetime_date"] = df["datetime"].dt.date
     df["datetime_year"] = df["datetime"].dt.year
     df["datetime_month"] = df["datetime"].dt.month
+    df["datetime_weekday"] = df["datetime"].dt.day_name()
     df["datetime_hour"] = df["datetime"].dt.hour
 
     channel["messages"] = df
@@ -78,6 +80,9 @@ def heatmapDayHours(df):
 
     plt.figure(figsize=(14, 12))
     g = sns.heatmap(heat,annot=True,fmt=".0f")
+    g.set_xlabel("Day",fontsize=15)
+    g.set_ylabel("Hour",fontsize=15)
+    g.set_title("Most active hours per weekday",fontsize=20)
     plt.savefig("heatmap_Days_Hours.png")
 
     return g
