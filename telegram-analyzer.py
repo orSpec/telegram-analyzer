@@ -63,7 +63,11 @@ def messagesPerWeekday(df):
 
     return g
 
-def heatmapDayHours(df):
+def heatmapDayHours(df,users):
+
+    if users:
+        df = df[df["UserID"].isin(users)]
+
     data = df.groupby(["datetime_weekday", "datetime_hour"])["id"].count().reset_index()
     heat = data.pivot(index="datetime_weekday", columns="datetime_hour", values="id").reset_index().set_index("datetime_weekday")
 
@@ -163,7 +167,9 @@ def main():
     parser.add_argument("-a", "--activity", default=[None], action="store", nargs="*", type=int, metavar = "UserID",
                         help="Create chart of activity over time of all users, pass one or multiple UserIDs to evaluate only these users")
 
-    parser.add_argument("-dh", "--daysHours", action="store_true", help="Create heatmap of posting days vs. times")
+    parser.add_argument("-dh", "--daysHours", default=[None], action="store", nargs="*", type=int, metavar="UserID",
+                        help="Create heatmap of posting days vs. times for all users or certain UserIDs")
+
     parser.add_argument("-ma", "--mostActive", type=isPositiveValue, help="Show n most active users: Need to pass n > 0",
                         metavar="nrOfUsers")
     parser.add_argument("-mac", "--mostActiveChart", type=isPositiveValue,
@@ -190,8 +196,9 @@ def main():
     if args.time:
         postingTimeChart(df)
 
-    if args.daysHours:
-        heatmapDayHours(df)
+    if args.daysHours != [None]:
+        users = args.daysHours
+        heatmapDayHours(df, users)
 
     if args.weekday:
         messagesPerWeekday(df)
