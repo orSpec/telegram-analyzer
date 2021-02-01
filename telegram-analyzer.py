@@ -17,7 +17,7 @@ def createChannel(file):
     channel["type"] = d["type"]
 
     df = pd.DataFrame(d["messages"])
-    df = df[["id", "type", "date", "text", "from", "from_id", "media_type", "edited"]]\
+    df = df[["id", "type", "date", "text", "from", "from_id", "media_type", "edited", "forwarded_from"]]\
         .rename(columns={"from": "Username", "from_id": "UserID"})
 
     df = df[df["type"] == "message"]
@@ -144,6 +144,13 @@ def getStatistics(channel):
 
     return dic
 
+def getChannelsForwardedFrom(channel,top):
+    df = channel["messages"]
+
+    forwarded = df.groupby("forwarded_from")["id"].count().sort_values(ascending=False).reset_index().rename(columns={"id" : "Messages"})
+
+    return forwarded[:top]
+
 
 def isPositiveValue(input):
     try:
@@ -170,6 +177,10 @@ def main():
     parser.add_argument("-dh", "--daysHours", default=[None], action="store", nargs="*", type=int, metavar="UserID",
                         help="Create heatmap of posting days vs. times for all users or certain UserIDs")
 
+    parser.add_argument("-f", "--forwarded", type=isPositiveValue,
+                        help="Show the n most forwarded channels in this channel: Need to pass n > 0",
+                        metavar="topChannels")
+
     parser.add_argument("-ma", "--mostActive", type=isPositiveValue, help="Show n most active users: Need to pass n > 0",
                         metavar="nrOfUsers")
     parser.add_argument("-mac", "--mostActiveChart", type=isPositiveValue,
@@ -195,6 +206,11 @@ def main():
 
     if args.time:
         postingTimeChart(df)
+
+    if args.forwarded:
+        topChannels = args.forwarded
+        forwarded = getChannelsForwardedFrom(channel, topChannels)
+        print(tabulate(forwarded, headers='keys', tablefmt='psql', showindex=False))
 
     if args.daysHours != [None]:
         users = args.daysHours
